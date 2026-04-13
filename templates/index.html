@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>小说标签可视化工具</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    /* ---- Header ---- */
+    header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+      color: #fff;
+      padding: 32px 40px 28px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    header h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+    header p {
+      margin-top: 6px;
+      font-size: 0.9rem;
+      opacity: 0.7;
+    }
+
+    /* ---- Main layout ---- */
+    main {
+      max-width: 1100px;
+      margin: 36px auto;
+      padding: 0 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* ---- Card ---- */
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 28px 32px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    }
+    .card h2 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 18px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #f0f2f5;
+    }
+
+    /* ---- Upload zone ---- */
+    #drop-zone {
+      border: 2.5px dashed #c0c4cc;
+      border-radius: 12px;
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #fafbfc;
+    }
+    #drop-zone:hover, #drop-zone.dragover {
+      border-color: #5b6ef5;
+      background: #f0f2ff;
+    }
+    #drop-zone .icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+      display: block;
+    }
+    #drop-zone p {
+      font-size: 1rem;
+      color: #666;
+    }
+    #drop-zone p span {
+      color: #5b6ef5;
+      font-weight: 600;
+    }
+    #drop-zone small {
+      display: block;
+      margin-top: 6px;
+      color: #aaa;
+      font-size: 0.82rem;
+    }
+    #file-input { display: none; }
+
+    /* ---- File list ---- */
+    #file-list {
+      margin-top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .file-tag {
+      background: #eef0ff;
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 0.82rem;
+      color: #5b6ef5;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .file-tag .remove {
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: #aaa;
+      font-weight: bold;
+      line-height: 1;
+    }
+    .file-tag .remove:hover { color: #e05252; }
+
+    /* ---- Analyze button ---- */
+    #analyze-btn {
+      display: block;
+      width: 100%;
+      margin-top: 20px;
+      padding: 14px;
+      background: linear-gradient(90deg, #5b6ef5, #7c3aed);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      letter-spacing: 0.05em;
+    }
+    #analyze-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+    #analyze-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ---- Progress / CoT ---- */
+    #progress-card { display: none; }
+    #log-box {
+      background: #111827;
+      color: #a8e6cf;
+      font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+      font-size: 0.82rem;
+      line-height: 1.7;
+      padding: 16px 18px;
+      border-radius: 10px;
+      min-height: 120px;
+      max-height: 320px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid #a8e6cf44;
+      border-top-color: #a8e6cf;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---- Results ---- */
+    #result-card { display: none; }
+    #result-images {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 720px) {
+      #result-images { grid-template-columns: 1fr; }
+    }
+    .result-item h3 {
+      font-size: 0.9rem;
+      color: #555;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    .result-item img {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid #eee;
+      cursor: zoom-in;
+      transition: transform 0.2s;
+    }
+    .result-item img:hover { transform: scale(1.01); }
+
+    /* ---- Download buttons ---- */
+    .download-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+    .dl-btn {
+      padding: 9px 20px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      border: none;
+      transition: opacity 0.2s;
+    }
+    .dl-btn:hover { opacity: 0.85; }
+    .dl-wc  { background: #e8f4fd; color: #2563eb; }
+    .dl-bar { background: #fef3c7; color: #d97706; }
+
+    /* ---- Image lightbox ---- */
+    #lightbox {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.82);
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+    }
+    #lightbox.active { display: flex; }
+    #lightbox img {
+      max-width: 92vw;
+      max-height: 90vh;
+      border-radius: 8px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    }
+    #lightbox-close {
+      position: fixed;
+      top: 18px; right: 24px;
+      color: #fff;
+      font-size: 2rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>📚 小说标签可视化工具</h1>
+  <p>上传 TXT 小说文件，由豆包 AI 自动分析标签，生成词云与多维度柱状图</p>
+</header>
+
+<main>
+
+  <!-- 上传区域 -->
+  <div class="card">
+    <h2>上传小说文件</h2>
+    <div id="drop-zone">
+      <span class="icon">📂</span>
+      <p>拖拽文件到此处，或 <span>点击选择文件</span></p>
+      <small>支持 .txt 格式，最多 20 个文件</small>
+    </div>
+    <input type="file" id="file-input" multiple accept=".txt" />
+    <div id="file-list"></div>
+    <button id="analyze-btn" disabled>开始分析</button>
+  </div>
+
+  <!-- 分析进度 -->
+  <div class="card" id="progress-card">
+    <h2 id="progress-title">
+      <span class="spinner" id="spinner"></span>分析进度
+    </h2>
+    <div id="log-box"></div>
+  </div>
+
+  <!-- 结果展示 -->
+  <div class="card" id="result-card">
+    <h2>分析结果</h2>
+    <div id="result-images">
+      <div class="result-item">
+        <h3>标签热度词云</h3>
+        <img id="img-wc" src="" alt="词云" />
+      </div>
+      <div class="result-item">
+        <h3>多维度标签柱状图</h3>
+        <img id="img-bar" src="" alt="柱状图" />
+      </div>
+    </div>
+    <div class="download-row">
+      <a id="dl-wc" class="dl-btn dl-wc" href="#" download="wordcloud.png">⬇ 下载词云图</a>
+      <a id="dl-bar" class="dl-btn dl-bar" href="#" download="bar_combined.png">⬇ 下载柱状图</a>
+    </div>
+  </div>
+
+</main>
+
+<!-- 图片放大 -->
+<div id="lightbox">
+  <span id="lightbox-close">&times;</span>
+  <img id="lightbox-img" src="" alt="" />
+</div>
+
+<script>
+  // ===== 文件管理 =====
+  const dropZone   = document.getElementById("drop-zone");
+  const fileInput  = document.getElementById("file-input");
+  const fileList   = document.getElementById("file-list");
+  const analyzeBtn = document.getElementById("analyze-btn");
+
+  let selectedFiles = [];  // File 对象数组
+
+  dropZone.addEventListener("click", () => fileInput.click());
+
+  dropZone.addEventListener("dragover", e => {
+    e.preventDefault();
+    dropZone.classList.add("dragover");
+  });
+  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+  dropZone.addEventListener("drop", e => {
+    e.preventDefault();
+    dropZone.classList.remove("dragover");
+    addFiles([...e.dataTransfer.files]);
+  });
+
+  fileInput.addEventListener("change", () => {
+    addFiles([...fileInput.files]);
+    fileInput.value = "";
+  });
+
+  function addFiles(newFiles) {
+    newFiles = newFiles.filter(f => f.name.toLowerCase().endsWith(".txt"));
+    const names = new Set(selectedFiles.map(f => f.name));
+    for (const f of newFiles) {
+      if (!names.has(f.name) && selectedFiles.length < 20) {
+        selectedFiles.push(f);
+        names.add(f.name);
+      }
+    }
+    renderFileList();
+  }
+
+  function removeFile(name) {
+    selectedFiles = selectedFiles.filter(f => f.name !== name);
+    renderFileList();
+  }
+
+  function renderFileList() {
+    fileList.innerHTML = "";
+    selectedFiles.forEach(f => {
+      const tag = document.createElement("div");
+      tag.className = "file-tag";
+      tag.innerHTML = `📄 ${f.name} <span class="remove" onclick="removeFile('${f.name}')">×</span>`;
+      fileList.appendChild(tag);
+    });
+    analyzeBtn.disabled = selectedFiles.length === 0;
+  }
+
+  // ===== 分析 =====
+  const progressCard = document.getElementById("progress-card");
+  const progressTitle = document.getElementById("progress-title");
+  const spinner      = document.getElementById("spinner");
+  const logBox       = document.getElementById("log-box");
+  const resultCard   = document.getElementById("result-card");
+  const imgWc        = document.getElementById("img-wc");
+  const imgBar       = document.getElementById("img-bar");
+  const dlWc         = document.getElementById("dl-wc");
+  const dlBar        = document.getElementById("dl-bar");
+
+  analyzeBtn.addEventListener("click", () => {
+    if (selectedFiles.length === 0) return;
+
+    // 重置 UI
+    logBox.textContent = "";
+    progressCard.style.display = "block";
+    resultCard.style.display = "none";
+    spinner.style.display = "inline-block";
+    progressTitle.innerHTML = '<span class="spinner" id="spinner"></span>分析进度（实时）';
+    analyzeBtn.disabled = true;
+
+    const formData = new FormData();
+    selectedFiles.forEach(f => formData.append("files", f));
+
+    const evtSource = new EventSource("/analyze");   // fallback: use fetch + ReadableStream
+    // 实际使用 fetch 流式读取，因为 SSE 需要 GET，POST 用 fetch
+    evtSource.close();
+
+    fetch("/analyze", { method: "POST", body: formData })
+      .then(res => {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        function pump() {
+          return reader.read().then(({ done, value }) => {
+            if (done) return;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop();   // 保留不完整行
+
+            lines.forEach(line => {
+              if (!line.startsWith("data: ")) return;
+              try {
+                const msg = JSON.parse(line.slice(6));
+                handleMessage(msg);
+              } catch(e) {}
+            });
+            return pump();
+          });
+        }
+        return pump();
+      })
+      .catch(err => appendLog("连接失败: " + err));
+  });
+
+  function handleMessage(msg) {
+    if (msg.type === "log") {
+      appendLog(msg.msg);
+    } else if (msg.type === "result") {
+      showResult(msg.wordcloud, msg.bar);
+    } else if (msg.type === "error") {
+      appendLog("❌ " + msg.msg);
+    } else if (msg.type === "done") {
+      document.getElementById("spinner") &&
+        (document.getElementById("spinner").style.display = "none");
+      progressTitle.textContent = "分析完成";
+      analyzeBtn.disabled = false;
+    }
+  }
+
+  function appendLog(text) {
+    logBox.textContent += text + "\n";
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
+  function showResult(wcUrl, barUrl) {
+    resultCard.style.display = "block";
+    imgWc.src  = wcUrl;
+    imgBar.src = barUrl;
+    dlWc.href  = wcUrl.split("?")[0];
+    dlBar.href = barUrl.split("?")[0];
+    resultCard.scrollIntoView({ behavior: "smooth" });
+  }
+
+  // ===== 图片放大 =====
+  const lightbox      = document.getElementById("lightbox");
+  const lightboxImg   = document.getElementById("lightbox-img");
+  const lightboxClose = document.getElementById("lightbox-close");
+
+  [imgWc, imgBar].forEach(img => {
+    img.addEventListener("click", () => {
+      lightboxImg.src = img.src;
+      lightbox.classList.add("active");
+    });
+  });
+  lightboxClose.addEventListener("click", () => lightbox.classList.remove("active"));
+  lightbox.addEventListener("click", e => {
+    if (e.target === lightbox) lightbox.classList.remove("active");
+  });
+</script>
+
+</body>
+</html>

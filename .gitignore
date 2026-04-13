@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# 运行时生成的目录（部署环境不需要）
+novels/
+cache/
+uploads/
+output/
+
+# macOS
+.DS_Store
+
+# IDE
+.codeflicker/
