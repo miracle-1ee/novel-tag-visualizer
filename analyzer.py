@@ -9,7 +9,6 @@ analyzer.py - 使用豆包 AI 对小说进行动态标签分析
 所有进度通过 yield 输出，供前端 SSE 流式展示。
 """
 import json
-import hashlib
 from pathlib import Path
 from openai import OpenAI
 from config import API_KEY, API_BASE_URL, MODEL_NAME, CHUNK_SIZE, MAX_CHUNKS, SEED_TAG_LIST
@@ -27,14 +26,6 @@ def read_novel(filepath: str) -> str:
         except (UnicodeDecodeError, LookupError):
             continue
     raise ValueError(f"无法读取文件: {filepath}")
-
-
-def get_cache_path(content_md5: str, stem: str) -> Path:
-    import os
-    _is_cloud = os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("PORT")
-    cache_dir = Path("/tmp/cache") if _is_cloud else Path(__file__).parent / "cache"
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    return cache_dir / f"{stem}_{content_md5[:8]}.json"
 
 
 # ============================================================
@@ -195,15 +186,6 @@ def analyze_all_novels_stream(novels_dir: str = None):
             per_book_scores[book_stem] = {}
             continue
 
-        md5 = hashlib.md5(content.encode("utf-8", errors="replace")).hexdigest()
-        cache_path = get_cache_path(md5, txt_path.stem)
-
-        if cache_path.exists():
-            yield ("log", f"  [缓存命中] 直接读取缓存")
-            with open(cache_path, "r", encoding="utf-8") as f:
-                per_book_scores[book_stem] = json.load(f)
-            continue
-
         # 分段摘要
         summary_text = ""
         for msg_type, msg_val in summarize_novel(content, display_name, client):
@@ -226,13 +208,6 @@ def analyze_all_novels_stream(novels_dir: str = None):
                 scores = msg_val
 
         per_book_scores[book_stem] = scores
-
-        # 只有打分成功（至少有一个标签得分 > 0）才写缓存
-        if scores and any(v > 0 for v in scores.values()):
-            with open(cache_path, "w", encoding="utf-8") as f:
-                json.dump(scores, f, ensure_ascii=False, indent=2)
-        else:
-            yield ("log", f"  [{display_name}] 打分结果为空，不写入缓存")
 
     # ===== 汇总动态标签集 =====
     yield ("log", "\n汇总动态标签集...")
