@@ -18,6 +18,12 @@ from wordcloud import WordCloud
 # ============================================================
 
 def _get_chinese_font():
+    # 优先使用项目内置字体（跨平台，部署到云端也有效）
+    bundled = Path(__file__).parent / "fonts" / "NotoSansCJK-Regular.otf"
+    if bundled.exists():
+        return str(bundled)
+
+    # 回退：系统字体
     candidates = [
         "/System/Library/Fonts/STHeiti Light.ttc",
         "/System/Library/Fonts/STHeiti Medium.ttc",
@@ -25,6 +31,7 @@ def _get_chinese_font():
         "/System/Library/Fonts/PingFang.ttc",
         "/Library/Fonts/Arial Unicode MS.ttf",
         "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
         "C:/Windows/Fonts/simhei.ttf",
         "C:/Windows/Fonts/msyh.ttc",
     ]
@@ -46,7 +53,9 @@ FONT_PATH = _get_chinese_font()
 
 def _setup_font():
     if FONT_PATH:
-        matplotlib.rcParams["font.family"] = fm.FontProperties(fname=FONT_PATH).get_name()
+        prop = fm.FontProperties(fname=FONT_PATH)
+        fm.fontManager.addfont(FONT_PATH)
+        matplotlib.rcParams["font.family"] = prop.get_name()
     else:
         matplotlib.rcParams["font.family"] = ["STHeiti", "SimHei", "WenQuanYi Micro Hei", "sans-serif"]
     matplotlib.rcParams["axes.unicode_minus"] = False
