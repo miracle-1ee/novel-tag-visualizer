@@ -96,6 +96,13 @@ def analyze():
                 yield sse({"type": "done"})
                 return
 
+            # 检查是否有实际有效的标签分数
+            total = result.get("total", {})
+            if not total or all(v == 0 for v in total.values()):
+                yield sse({"type": "error", "msg": "⚠️ 所有书籍分析均失败（标签分数全为 0），可能原因：\n  • API Key 失效或余额不足\n  • 网络连接异常\n  请检查 API Key 后重试"})
+                yield sse({"type": "done"})
+                return
+
             yield sse({"type": "log", "msg": "\n正在生成可视化图表..."})
 
             visualizer.plot_wordcloud(result["total"], OUTPUT_DIR)
