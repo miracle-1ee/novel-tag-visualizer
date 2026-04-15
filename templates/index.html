@@ -270,7 +270,7 @@
 
   <!-- 结果展示 -->
   <div class="card" id="result-card">
-    <h2>分析结果</h2>
+    <h2>分析结果 <button id="clear-result-btn" title="清除结果" style="float:right;background:none;border:1px solid #ddd;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:0.8rem;color:#999;">清除</button></h2>
     <div id="result-images">
       <div class="result-item">
         <h3>标签热度词云</h3>
@@ -434,7 +434,35 @@
     dlWc.href  = wcUrl.split("?")[0];
     dlBar.href = barUrl.split("?")[0];
     resultCard.scrollIntoView({ behavior: "smooth" });
+    // 持久化到 localStorage，刷新后自动恢复
+    localStorage.setItem("lastResult", JSON.stringify({ wc: wcUrl, bar: barUrl, ts: Date.now() }));
   }
+
+  // ===== 页面加载时恢复上次结果 =====
+  (function restoreLastResult() {
+    try {
+      const saved = JSON.parse(localStorage.getItem("lastResult") || "null");
+      if (!saved) return;
+      // 超过 24 小时的结果不恢复（服务器 /tmp 重启后图片会消失）
+      if (Date.now() - saved.ts > 24 * 60 * 60 * 1000) {
+        localStorage.removeItem("lastResult");
+        return;
+      }
+      // 验证图片是否仍然存在
+      const testImg = new Image();
+      testImg.onload = () => showResult(saved.wc, saved.bar);
+      testImg.onerror = () => localStorage.removeItem("lastResult");
+      testImg.src = saved.wc;
+    } catch(e) {}
+  })();
+
+  // ===== 清除结果 =====
+  document.getElementById("clear-result-btn").addEventListener("click", () => {
+    localStorage.removeItem("lastResult");
+    resultCard.style.display = "none";
+    imgWc.src = "";
+    imgBar.src = "";
+  });
 
   // ===== 图片放大 =====
   const lightbox      = document.getElementById("lightbox");
