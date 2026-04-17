@@ -9,7 +9,7 @@ load_dotenv()
 # ========== AI 模型配置 ==========
 API_KEY = os.getenv("DOUBAO_API_KEY", "")
 API_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3"
-MODEL_NAME = "doubao-1-5-pro-32k-250115"
+MODEL_NAME = "doubao-1-5-lite-32k-250115"
 
 # ========== 分析配置 ==========
 CHUNK_SIZE = 3000   # 每段摘要字符数
