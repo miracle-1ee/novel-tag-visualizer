@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: novel-tag-visualizer
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn server:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 600
+    envVars:
+      - key: DOUBAO_API_KEY
+        sync: false   # 在 Render Dashboard 手动填写，不提交到代码库
+    plan: free
